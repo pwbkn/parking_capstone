@@ -32,6 +32,9 @@ LOGIN_URL = '/login/'
 # After successful login, send users to the site root
 LOGIN_REDIRECT_URL = '/'
 
+# Trusted origins for CSRF checks (include scheme for HTTPS)
+CSRF_TRUSTED_ORIGINS = ['https://smartpark.73sec.eu.org']
+
 
 # Application definition
 
