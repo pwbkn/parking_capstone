@@ -1,0 +1,1 @@
+source ~/develop/temp/yolo11/.venv/bin/activate
