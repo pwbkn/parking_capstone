@@ -58,8 +58,8 @@
                     <h2 class="text-xl font-semibold">Raspberry Pi Capture</h2>
                     <p class="text-sm text-gray-400">Capture a frame directly from the Pi camera or any attached webcam.</p>
                 </div>
-                <span class="text-xs px-3 py-1 rounded-full border border-white/10 {{ 'bg-green-500/10 text-green-300' if camera_ready else 'bg-yellow-500/10 text-yellow-300' }}">
-                    {{ 'Camera detected' if camera_ready else 'No camera detected' }}
+                <span class="text-xs px-3 py-1 rounded-full border border-white/10 {% if camera_ready %}bg-green-500/10 text-green-300{% else %}bg-yellow-500/10 text-yellow-300{% endif %}">
+                    {% if camera_ready %}Camera detected{% else %}No camera detected{% endif %}
                 </span>
             </div>
             <form method="post" class="flex flex-col md:flex-row md:items-center gap-4">
