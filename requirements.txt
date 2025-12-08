@@ -6,4 +6,3 @@ onnxruntime
 opencv-python-headless
 numpy
 requests
-python3-picamzero
