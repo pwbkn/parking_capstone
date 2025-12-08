@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<!-- Sidebar -->
+<aside class="w-64 glass-sidebar h-full flex flex-col p-6 hidden md:flex rounded-r-3xl relative z-10">
+    <div class="flex items-center gap-4 mb-10">
+        <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-pink-500 to-violet-500 p-0.5">
+            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ request.user.username|default:'guest' }}" class="rounded-full bg-gray-900" alt="avatar">
+        </div>
+        <div>
+            <h3 class="font-bold text-lg">{{ request.user.username|default:'Guest' }}</h3>
+            <p class="text-xs text-gray-400">Admin</p>
+        </div>
+    </div>
+
+    <nav class="flex-1 space-y-4">
+        <a href="{% url 'dashboard' %}"
+           class="flex items-center gap-3 p-3 rounded-xl font-semibold transition {% if active_segment == 'Dashboard' %}bg-white text-gray-900 shadow-lg shadow-purple-500/20{% else %}text-gray-400 hover:text-white hover:bg-white/10{% endif %}">
+            <i class="ph ph-squares-four text-xl"></i> Dashboard
+        </a>
+        <a href="{% url 'cameras' %}"
+           class="flex items-center gap-3 p-3 rounded-xl font-semibold transition {% if active_segment == 'Cameras' %}bg-white text-gray-900 shadow-lg shadow-purple-500/20{% else %}text-gray-400 hover:text-white hover:bg-white/10{% endif %}">
+            <i class="ph ph-video-camera text-xl"></i> Cameras
+        </a>
+        <a href="#" class="flex items-center gap-3 text-gray-400 p-3 hover:text-white hover:bg-white/10 rounded-xl transition">
+            <i class="ph ph-chart-line-up text-xl"></i> Analytics
+        </a>
+        <a href="#" class="flex items-center gap-3 text-gray-400 p-3 hover:text-white hover:bg-white/10 rounded-xl transition">
+            <i class="ph ph-gear text-xl"></i> Settings
+        </a>
+    </nav>
+
+    <a href="{% url 'logout' %}" class="flex items-center gap-3 text-red-400 p-3 hover:bg-red-500/10 rounded-xl mt-auto">
+        <i class="ph ph-sign-out text-xl"></i> Logout
+    </a>
+</aside>
+
+<main class="flex-1 p-8 overflow-y-auto relative">
+    <header class="flex justify-between items-center mb-8">
+        <div>
+            <p class="text-gray-400 text-sm">Edge AI Intake</p>
+            <h1 class="text-3xl font-bold">Camera Console</h1>
+        </div>
+        <div class="flex items-center gap-3 text-gray-300 text-sm">
+            <span class="flex items-center gap-2 px-3 py-2 rounded-full bg-gray-800 border border-white/5">
+                <i class="ph ph-shield-star"></i> YOLOv8 ONNX Runtime
+            </span>
+            <span class="flex items-center gap-2 px-3 py-2 rounded-full bg-gray-800 border border-white/5">
+                <i class="ph ph-cloud-arrow-down"></i> Auto download enabled
+            </span>
+        </div>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="neo-card p-6 space-y-4 lg:col-span-2">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-semibold">Raspberry Pi Capture</h2>
+                    <p class="text-sm text-gray-400">Capture a frame directly from the Pi camera or any attached webcam.</p>
+                </div>
+                <span class="text-xs px-3 py-1 rounded-full border border-white/10 {{ 'bg-green-500/10 text-green-300' if camera_ready else 'bg-yellow-500/10 text-yellow-300' }}">
+                    {{ 'Camera detected' if camera_ready else 'No camera detected' }}
+                </span>
+            </div>
+            <form method="post" class="flex flex-col md:flex-row md:items-center gap-4">
+                {% csrf_token %}
+                <input type="hidden" name="capture" value="1">
+                <button type="submit" class="px-6 py-3 rounded-xl font-semibold bg-gradient-to-r from-purple-500 to-blue-500 shadow-lg shadow-purple-500/30 disabled:opacity-50 disabled:cursor-not-allowed" {% if not camera_ready %}disabled{% endif %}>
+                    <i class="ph ph-aperture text-lg mr-2 align-middle"></i> Capture & Detect
+                </button>
+                <p class="text-sm text-gray-400">We try <code>/dev/video0</code> first; attach the Pi camera or USB webcam before hitting capture.</p>
+            </form>
+        </div>
+
+        <div class="neo-card p-6 space-y-4">
+            <h2 class="text-xl font-semibold">Upload Snapshot</h2>
+            <p class="text-sm text-gray-400">Use any parking lot photo to test the detector.</p>
+            <form method="post" enctype="multipart/form-data" class="space-y-3">
+                {% csrf_token %}
+                <label class="block text-sm text-gray-300">Select image</label>
+                <input type="file" name="image" accept="image/*" class="w-full text-sm text-gray-200 bg-gray-800 border border-white/10 rounded-lg p-2" required>
+                <button type="submit" class="w-full px-4 py-2 rounded-lg bg-white text-gray-900 font-semibold hover:bg-gray-200 transition">
+                    Upload & Detect
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+        <div class="neo-card p-6 space-y-2">
+            <h3 class="font-semibold">Model health</h3>
+            <p class="text-sm text-gray-400">Weights live at <code>{{ MODEL_PATH|default:'content/runs/detect/parking_model/weights/best.onnx' }}</code>. They download automatically if missing.</p>
+            <p class="text-sm text-gray-500">Confidence defaults to 0.25. Adjust server-side if you need stricter detections.</p>
+        </div>
+        <div class="neo-card p-6 space-y-2">
+            <h3 class="font-semibold">Workflow</h3>
+            <ul class="text-sm text-gray-300 space-y-1 list-disc list-inside">
+                <li>Capture or upload</li>
+                <li>Run ONNX inference</li>
+                <li>Render overlays client-side as a data URI</li>
+            </ul>
+        </div>
+        <div class="neo-card p-6 space-y-2">
+            <h3 class="font-semibold">Quick tip</h3>
+            <p class="text-sm text-gray-400">If capture fails on Raspberry Pi OS Bullseye/Bookworm, enable legacy camera or install <code>libcamera</code> and expose it as <code>/dev/video0</code>.</p>
+        </div>
+    </div>
+
+    {% if error %}
+        <div class="neo-card p-4 mt-6 border border-red-500/30 text-red-300">
+            <p class="font-semibold">Detection error</p>
+            <p class="text-sm">{{ error }}</p>
+        </div>
+    {% endif %}
+
+    {% if result_image %}
+        <div class="neo-card p-6 mt-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <p class="text-gray-400 text-sm">Annotated result</p>
+                    <h3 class="text-xl font-semibold">{{ source|title }} image</h3>
+                </div>
+                <a href="{{ result_image }}" download="prediction.jpg" class="px-4 py-2 rounded-lg bg-gray-800 border border-white/10 text-sm hover:bg-gray-700">Download</a>
+            </div>
+            <img src="{{ result_image }}" alt="Detection result" class="w-full rounded-xl border border-white/5" />
+        </div>
+    {% endif %}
+</main>
+{% endblock %}
