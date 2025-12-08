@@ -25,7 +25,12 @@ SECRET_KEY = 'django-insecure-v7#4pr5d$$lou!cqxl))zdy#0c-5r1an-mqam$(pri49*r783^
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['smartpark.73sec.eu.org']
+
+# Redirect unauthenticated users to the project's login view (not the default /accounts/login/)
+LOGIN_URL = '/login/'
+# After successful login, send users to the site root
+LOGIN_REDIRECT_URL = '/'
 
 
 # Application definition
