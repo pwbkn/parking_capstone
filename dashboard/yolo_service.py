@@ -1,5 +1,6 @@
 import base64
 import os
+import tempfile
 from pathlib import Path
 from typing import Optional
 
@@ -8,6 +9,12 @@ import numpy as np
 import requests
 from django.conf import settings
 from ultralytics import YOLO
+
+try:
+    from picamzero import Camera  # type: ignore
+    PICAMZERO_AVAILABLE = True
+except ImportError:
+    PICAMZERO_AVAILABLE = False
 
 MODEL_URL = "https://www.dropbox.com/scl/fi/8n60aqre52ix3gp65t3v0/best.onnx?rlkey=1jniqjxlctut2qopgagsr6lkm&st=ftgl9dsj&dl=1"
 MODEL_FILENAME = "best.onnx"
@@ -71,6 +78,13 @@ def run_inference(image_bytes: bytes, conf: float = 0.25) -> bytes:
 
 
 def camera_available() -> bool:
+    if PICAMZERO_AVAILABLE:
+        try:
+            Camera()
+            return True
+        except Exception:
+            return False
+
     camera = cv2.VideoCapture(0)
     ready = camera.isOpened()
     camera.release()
@@ -78,6 +92,27 @@ def camera_available() -> bool:
 
 
 def capture_frame() -> bytes:
+    if PICAMZERO_AVAILABLE:
+        temp_path = Path(tempfile.gettempdir()) / "picamzero_capture.jpg"
+        cam = Camera()
+        try:
+            cam.start_preview()
+            cam.take_photo(str(temp_path))
+        finally:
+            try:
+                cam.stop_preview()
+            except Exception:
+                pass
+
+        if not temp_path.exists():
+            raise RuntimeError("Picamzero failed to create capture file.")
+
+        data = temp_path.read_bytes()
+        temp_path.unlink(missing_ok=True)
+        if not data:
+            raise RuntimeError("Captured file is empty.")
+        return data
+
     camera = cv2.VideoCapture(0)
     if not camera.isOpened():
         camera.release()
