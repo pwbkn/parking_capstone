@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="w-full h-full flex items-center justify-center bg-gray-900 relative overflow-hidden">
+    <!-- Background blob effects -->
+    <div class="absolute top-0 left-0 w-96 h-96 bg-purple-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+    <div class="absolute bottom-0 right-0 w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+
+    <div class="z-10 bg-gray-800 p-8 rounded-2xl shadow-2xl w-96 border border-gray-700">
+        <h2 class="text-3xl font-bold mb-6 text-center text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">SmartPark</h2>
+        <h3 class="text-xl text-gray-400 mb-6 text-center">Login</h3>
+        
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            <!-- Manually rendering for styling control, or use form.as_p -->
+            <div>
+                <label class="block text-gray-400 text-sm mb-1">Username</label>
+                {{ form.username }} 
+                <!-- Note: Add Tailwind classes to inputs via JS or Widget tweaks in forms.py, 
+                     but for this template standard inputs will work -->
+            </div>
+            <div>
+                <label class="block text-gray-400 text-sm mb-1">Password</label>
+                {{ form.password }}
+            </div>
+            
+            <button type="submit" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 py-2 rounded-xl font-semibold hover:opacity-90 transition">
+                Sign In
+            </button>
+        </form>
+        <p class="mt-4 text-center text-sm text-gray-500">
+            Don't have an account? <a href="{% url 'register' %}" class="text-purple-400">Sign up</a>
+        </p>
+    </div>
+</div>
+
+<style>
+    /* Styling Django Form Inputs quickly */
+    input {
+        width: 100%;
+        background: #2d3748;
+        border: none;
+        padding: 10px;
+        border-radius: 8px;
+        color: white;
+        outline: none;
+    }
+    input:focus {
+        outline: 2px solid #805ad5;
+        box-shadow: 0 0 0 2px rgba(128, 90, 213, 0.25);
+    }
+</style>
+{% endblock %}
