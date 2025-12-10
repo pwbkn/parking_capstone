@@ -109,27 +109,37 @@ def camera_available() -> bool:
     if rpicam_exists or shutil.which("fswebcam"):
         return True
 
-    camera = cv2.VideoCapture(0)
-    ready = camera.isOpened()
-    camera.release()
-    return rpicam_exists or ready
+    for device in (0, 1):
+        camera = cv2.VideoCapture(device)
+        ready = camera.isOpened()
+        camera.release()
+        if ready:
+            return True
+    return False
 
 
 def _capture_with_webcam() -> bytes:
-    camera = cv2.VideoCapture(0)
-    if not camera.isOpened():
+    errors = []
+    for device in (0, 1):
+        camera = cv2.VideoCapture(device)
+        if not camera.isOpened():
+            camera.release()
+            errors.append(f"USB webcam not detected on /dev/video{device}.")
+            continue
+
+        ok, frame = camera.read()
         camera.release()
-        raise RuntimeError("USB webcam not detected on /dev/video0.")
+        if not ok:
+            errors.append(f"USB webcam found on /dev/video{device} but failed to capture a frame.")
+            continue
 
-    ok, frame = camera.read()
-    camera.release()
-    if not ok:
-        raise RuntimeError("USB webcam found but failed to capture a frame.")
+        ok, encoded = cv2.imencode(".jpg", frame)
+        if not ok:
+            errors.append(f"Failed to encode captured frame from /dev/video{device}.")
+            continue
+        return encoded.tobytes()
 
-    ok, encoded = cv2.imencode(".jpg", frame)
-    if not ok:
-        raise RuntimeError("Failed to encode captured frame from USB webcam.")
-    return encoded.tobytes()
+    raise RuntimeError("; ".join(errors) if errors else "No USB webcam detected.")
 
 
 def _capture_with_fswebcam() -> bytes:
@@ -137,21 +147,30 @@ def _capture_with_fswebcam() -> bytes:
     if not exe:
         raise RuntimeError("fswebcam is not installed.")
 
-    temp_path = Path(tempfile.gettempdir()) / "fswebcam_capture.jpg"
-    cmd = [exe, "-d", "/dev/video0", "-r", "1280x720", "--no-banner", "-S", "20", str(temp_path)]
-    try:
-        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=12)
-        if proc.returncode != 0:
-            raise RuntimeError(proc.stderr.decode().strip() or "fswebcam failed with unknown error")
-        if not temp_path.exists():
-            raise RuntimeError("fswebcam did not create an output file.")
+    errors = []
+    for device in ("/dev/video1", "/dev/video0"):
+        temp_path = Path(tempfile.gettempdir()) / "fswebcam_capture.jpg"
+        cmd = [exe, "-d", device, "-r", "1280x720", "--no-banner", "-S", "20", str(temp_path)]
+        try:
+            proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=12)
+            if proc.returncode != 0:
+                errors.append(f"{device}: {proc.stderr.decode().strip() or 'fswebcam failed'}")
+                continue
+            if not temp_path.exists():
+                errors.append(f"{device}: fswebcam did not create an output file.")
+                continue
 
-        data = temp_path.read_bytes()
-        if not data:
-            raise RuntimeError("fswebcam produced an empty file.")
-        return data
-    finally:
-        temp_path.unlink(missing_ok=True)
+            data = temp_path.read_bytes()
+            if not data:
+                errors.append(f"{device}: fswebcam produced an empty file.")
+                continue
+            return data
+        except subprocess.TimeoutExpired:
+            errors.append(f"{device}: fswebcam timed out after 12 seconds")
+        finally:
+            temp_path.unlink(missing_ok=True)
+
+    raise RuntimeError("; ".join(errors) if errors else "fswebcam could not capture on any device")
 
 
 def capture_frame() -> bytes:
