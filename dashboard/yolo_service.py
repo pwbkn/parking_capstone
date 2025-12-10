@@ -106,6 +106,9 @@ def run_inference(image_bytes: bytes, conf: float = 0.25) -> Tuple[bytes, Dict[s
 
 def camera_available() -> bool:
     rpicam_exists = shutil.which("rpicam-still") is not None
+    if rpicam_exists or shutil.which("fswebcam"):
+        return True
+
     camera = cv2.VideoCapture(0)
     ready = camera.isOpened()
     camera.release()
@@ -127,6 +130,28 @@ def _capture_with_webcam() -> bytes:
     if not ok:
         raise RuntimeError("Failed to encode captured frame from USB webcam.")
     return encoded.tobytes()
+
+
+def _capture_with_fswebcam() -> bytes:
+    exe = shutil.which("fswebcam")
+    if not exe:
+        raise RuntimeError("fswebcam is not installed.")
+
+    temp_path = Path(tempfile.gettempdir()) / "fswebcam_capture.jpg"
+    cmd = [exe, "-d", "/dev/video1", "-r", "1280x720", "--no-banner", "-S", "20", str(temp_path)]
+    try:
+        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=12)
+        if proc.returncode != 0:
+            raise RuntimeError(proc.stderr.decode().strip() or "fswebcam failed with unknown error")
+        if not temp_path.exists():
+            raise RuntimeError("fswebcam did not create an output file.")
+
+        data = temp_path.read_bytes()
+        if not data:
+            raise RuntimeError("fswebcam produced an empty file.")
+        return data
+    finally:
+        temp_path.unlink(missing_ok=True)
 
 
 def capture_frame() -> bytes:
@@ -153,6 +178,11 @@ def capture_frame() -> bytes:
             errors.append(f"rpicam-still error: {exc}")
         finally:
             temp_path.unlink(missing_ok=True)
+
+    try:
+        return _capture_with_fswebcam()
+    except Exception as exc:  # noqa: B902
+        errors.append(str(exc))
 
     try:
         return _capture_with_webcam()
