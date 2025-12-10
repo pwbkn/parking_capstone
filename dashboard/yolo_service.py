@@ -105,43 +105,61 @@ def run_inference(image_bytes: bytes, conf: float = 0.25) -> Tuple[bytes, Dict[s
 
 
 def camera_available() -> bool:
-    if shutil.which("rpicam-still"):
-        return True
-
+    rpicam_exists = shutil.which("rpicam-still") is not None
     camera = cv2.VideoCapture(0)
     ready = camera.isOpened()
     camera.release()
-    return ready
+    return rpicam_exists or ready
 
 
-def capture_frame() -> bytes:
-    rpicam = shutil.which("rpicam-still")
-    if rpicam:
-        temp_path = Path(tempfile.gettempdir()) / "rpicam_capture.jpg"
-        cmd = [rpicam, "-o", str(temp_path), "-t", "1000"]
-        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)
-        if proc.returncode != 0 or not temp_path.exists():
-            raise RuntimeError(f"rpicam-still failed: {proc.stderr.decode().strip() or 'unknown error'}")
-        data = temp_path.read_bytes()
-        temp_path.unlink(missing_ok=True)
-        if not data:
-            raise RuntimeError("rpicam-still produced an empty file.")
-        return data
-
+def _capture_with_webcam() -> bytes:
     camera = cv2.VideoCapture(0)
     if not camera.isOpened():
         camera.release()
-        raise RuntimeError("No camera detected. Connect a Raspberry Pi camera or USB webcam.")
+        raise RuntimeError("USB webcam not detected on /dev/video0.")
 
     ok, frame = camera.read()
     camera.release()
     if not ok:
-        raise RuntimeError("Camera found but failed to capture a frame.")
+        raise RuntimeError("USB webcam found but failed to capture a frame.")
 
     ok, encoded = cv2.imencode(".jpg", frame)
     if not ok:
-        raise RuntimeError("Failed to encode captured frame.")
+        raise RuntimeError("Failed to encode captured frame from USB webcam.")
     return encoded.tobytes()
+
+
+def capture_frame() -> bytes:
+    errors = []
+    rpicam = shutil.which("rpicam-still")
+    if rpicam:
+        temp_path = Path(tempfile.gettempdir()) / "rpicam_capture.jpg"
+        cmd = [rpicam, "-o", str(temp_path), "-t", "1000"]
+        try:
+            proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)
+            if proc.returncode == 0 and temp_path.exists():
+                data = temp_path.read_bytes()
+                temp_path.unlink(missing_ok=True)
+                if not data:
+                    errors.append("rpicam-still produced an empty file.")
+                else:
+                    return data
+            else:
+                err_msg = proc.stderr.decode().strip() or "rpicam-still failed with unknown error"
+                errors.append(err_msg)
+        except subprocess.TimeoutExpired:
+            errors.append("rpicam-still timed out after 10 seconds")
+        except Exception as exc:  # noqa: B902
+            errors.append(f"rpicam-still error: {exc}")
+        finally:
+            temp_path.unlink(missing_ok=True)
+
+    try:
+        return _capture_with_webcam()
+    except Exception as exc:  # noqa: B902
+        errors.append(str(exc))
+
+    raise RuntimeError("No camera could capture a frame. Attempts: " + "; ".join(errors))
 
 
 def as_data_uri(image_bytes: bytes) -> str:
