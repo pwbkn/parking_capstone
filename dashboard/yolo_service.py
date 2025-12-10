@@ -3,6 +3,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
@@ -127,13 +128,27 @@ def _capture_with_webcam() -> bytes:
             errors.append(f"USB webcam not detected on /dev/video{device}.")
             continue
 
-        ok, frame = camera.read()
+        chosen_frame = None
+        # Grab a few warmup frames to avoid black images on cold start.
+        for _ in range(6):
+            ok, frame = camera.read()
+            if ok and frame is not None:
+                chosen_frame = frame
+                if frame.mean() > 2:  # heuristically non-black
+                    break
+            time.sleep(0.05)
+
         camera.release()
-        if not ok:
+
+        if chosen_frame is None:
             errors.append(f"USB webcam found on /dev/video{device} but failed to capture a frame.")
             continue
 
-        ok, encoded = cv2.imencode(".jpg", frame)
+        if chosen_frame.mean() <= 2:
+            errors.append(f"USB webcam on /dev/video{device} returned a black frame. Check lighting/cover.")
+            continue
+
+        ok, encoded = cv2.imencode(".jpg", chosen_frame)
         if not ok:
             errors.append(f"Failed to encode captured frame from /dev/video{device}.")
             continue
