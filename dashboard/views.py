@@ -2,10 +2,22 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.http import JsonResponse
+from django.utils import timezone
 from .models import ParkingSpot, ParkingZone, AnalyticsData
 from .yolo_service import MODEL_PATH, run_inference, camera_available, capture_frame, as_data_uri
 import random # Simulating ML data for demo
+
+
+def _store_latest_stats(stats: dict, source: str) -> None:
+    """Persist the most recent occupancy stats for the dashboard card."""
+    payload = {
+        **stats,
+        "source": source,
+        "updated_at": timezone.now().isoformat(),
+    }
+    cache.set("latest_occupancy_stats", payload, timeout=None)
 
 @login_required
 def dashboard_view(request):
@@ -15,12 +27,21 @@ def dashboard_view(request):
     
     # Calculate percentage for the donut chart
     occupancy_rate = int((occupied / total_spots) * 100) if total_spots > 0 else 0
+
+    latest_stats = cache.get("latest_occupancy_stats")
+    if latest_stats:
+        total_spots = latest_stats.get("total_spaces", total_spots)
+        occupied = latest_stats.get("occupied", occupied)
+        free = latest_stats.get("empty", total_spots - occupied)
+        occupancy_rate = latest_stats.get("occupancy_rate", occupancy_rate)
+    else:
+        free = total_spots - occupied
     
     # Context data for the template
     context = {
         'total_spots': total_spots,
         'occupied_spots': occupied,
-        'free_spots': total_spots - occupied,
+        'free_spots': free,
         'occupancy_rate': occupancy_rate,
         'active_segment': 'Dashboard'
     }
@@ -38,17 +59,19 @@ def cameras_view(request):
         if 'capture' in request.POST:
             try:
                 captured_bytes = capture_frame()
-                annotated = run_inference(captured_bytes)
+                annotated, stats = run_inference(captured_bytes)
                 result_image = as_data_uri(annotated)
                 source = 'capture'
+                _store_latest_stats(stats, source)
             except Exception as exc: # noqa: B902 (broad for user feedback)
                 error = str(exc)
         elif request.FILES.get('image'):
             try:
                 uploaded_bytes = request.FILES['image'].read()
-                annotated = run_inference(uploaded_bytes)
+                annotated, stats = run_inference(uploaded_bytes)
                 result_image = as_data_uri(annotated)
                 source = 'upload'
+                _store_latest_stats(stats, source)
             except Exception as exc: # noqa: B902
                 error = str(exc)
         else:

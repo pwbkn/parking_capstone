@@ -92,6 +92,20 @@
                 <span class="font-bold">Occupancy</span>
                 <i class="ph ph-caret-down text-gray-500"></i>
             </div>
+            <div class="w-full grid grid-cols-3 gap-3 text-center mb-4">
+                <div class="bg-gray-800 rounded-xl p-3">
+                    <p class="text-xs text-gray-400">Occupied</p>
+                    <p class="text-lg font-bold">{{ occupied_spots|default:0 }}</p>
+                </div>
+                <div class="bg-gray-800 rounded-xl p-3">
+                    <p class="text-xs text-gray-400">Empty</p>
+                    <p class="text-lg font-bold">{{ free_spots|default:0 }}</p>
+                </div>
+                <div class="bg-gray-800 rounded-xl p-3">
+                    <p class="text-xs text-gray-400">Total</p>
+                    <p class="text-lg font-bold">{{ total_spots|default:0 }}</p>
+                </div>
+            </div>
             <h2 class="text-3xl font-bold mb-4">{{ occupancy_rate|default:0 }}%</h2>
             <div class="w-40 h-40 relative">
                 <canvas id="occupancyChart" data-occupied="{{ occupied_spots|default:0 }}" data-free="{{ free_spots|default:0 }}"></canvas>

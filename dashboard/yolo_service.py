@@ -4,7 +4,7 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -62,15 +62,46 @@ def _decode_image(image_bytes: bytes) -> np.ndarray:
     return img
 
 
-def run_inference(image_bytes: bytes, conf: float = 0.25) -> bytes:
+def _extract_occupancy_stats(result) -> Dict[str, int]:
+    """Count occupied/empty detections from a YOLO result."""
+    counts = {"occupied": 0, "empty": 0, "lots": 0}
+
+    names = getattr(result, "names", {}) or {}
+    boxes = getattr(result, "boxes", None)
+    class_ids = boxes.cls.tolist() if boxes is not None and boxes.cls is not None else []
+
+    for cid in class_ids:
+        label = str(names.get(int(cid), "")).lower()
+        if "empty" in label:
+            counts["empty"] += 1
+        elif "occup" in label:
+            counts["occupied"] += 1
+        elif "lot" in label:
+            counts["lots"] += 1
+
+    total_spaces = counts["occupied"] + counts["empty"]
+    occupancy_rate = int(round((counts["occupied"] / total_spaces) * 100)) if total_spaces else 0
+
+    return {
+        "occupied": counts["occupied"],
+        "empty": counts["empty"],
+        "total_spaces": total_spaces,
+        "occupancy_rate": occupancy_rate,
+        "lots_detected": counts["lots"],
+    }
+
+
+def run_inference(image_bytes: bytes, conf: float = 0.25) -> Tuple[bytes, Dict[str, int]]:
     model = get_model()
     frame = _decode_image(image_bytes)
     results = model.predict(source=frame, conf=conf)
-    plotted = results[0].plot()
+    result = results[0]
+    stats = _extract_occupancy_stats(result)
+    plotted = result.plot()
     ok, encoded = cv2.imencode(".jpg", plotted)
     if not ok:
         raise RuntimeError("Failed to encode result image")
-    return encoded.tobytes()
+    return encoded.tobytes(), stats
 
 
 def camera_available() -> bool:
