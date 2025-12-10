@@ -138,7 +138,7 @@ def _capture_with_fswebcam() -> bytes:
         raise RuntimeError("fswebcam is not installed.")
 
     temp_path = Path(tempfile.gettempdir()) / "fswebcam_capture.jpg"
-    cmd = [exe, "-d", "/dev/video1", "-r", "1280x720", "--no-banner", "-S", "20", str(temp_path)]
+    cmd = [exe, "-d", "/dev/video0", "-r", "1280x720", "--no-banner", "-S", "20", str(temp_path)]
     try:
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=12)
         if proc.returncode != 0:
