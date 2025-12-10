@@ -1,0 +1,74 @@
+{# Shared navigation: desktop sidebar + mobile top bar/drawer #}
+<div class="md:hidden fixed top-0 left-0 right-0 z-30 bg-dark border-b border-white/10 px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-pink-500 to-violet-500 p-0.5">
+            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ request.user.username|default:'guest' }}" class="rounded-full bg-gray-900" alt="avatar">
+        </div>
+        <div>
+            <p class="text-xs text-gray-400">SmartPark</p>
+            <p class="font-semibold text-sm">{{ request.user.username|default:'Guest' }}</p>
+        </div>
+    </div>
+    <button id="mobile-nav-toggle" class="p-2 rounded-lg bg-white/5 border border-white/10" aria-label="Toggle navigation">
+        <i class="ph ph-list text-xl"></i>
+    </button>
+</div>
+
+<div id="mobile-nav-scrim" class="md:hidden fixed inset-0 bg-black/50 z-30 hidden"></div>
+<nav id="mobile-nav-drawer" class="md:hidden fixed inset-y-0 left-0 w-72 glass-sidebar p-6 z-40 transform -translate-x-full transition-transform duration-200 ease-out shadow-2xl">
+    <div class="flex items-center gap-3 mb-8">
+        <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-pink-500 to-violet-500 p-0.5">
+            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ request.user.username|default:'guest' }}" class="rounded-full bg-gray-900" alt="avatar">
+        </div>
+        <div>
+            <h3 class="font-bold text-lg">{{ request.user.username|default:'Guest' }}</h3>
+            <p class="text-xs text-gray-400">Admin</p>
+        </div>
+    </div>
+    <div class="space-y-3">
+        <a href="{% url 'dashboard' %}" class="flex items-center gap-3 p-3 rounded-xl font-semibold transition {% if active_segment == 'Dashboard' %}bg-white text-gray-900 shadow-lg shadow-purple-500/20{% else %}text-gray-200 hover:text-white hover:bg-white/10{% endif %}">
+            <i class="ph ph-squares-four text-xl"></i> Dashboard
+        </a>
+        <a href="{% url 'cameras' %}" class="flex items-center gap-3 p-3 rounded-xl font-semibold transition {% if active_segment == 'Cameras' %}bg-white text-gray-900 shadow-lg shadow-purple-500/20{% else %}text-gray-200 hover:text-white hover:bg-white/10{% endif %}">
+            <i class="ph ph-video-camera text-xl"></i> Cameras
+        </a>
+        <a href="#" class="flex items-center gap-3 text-gray-400 p-3 hover:text-white hover:bg-white/10 rounded-xl transition">
+            <i class="ph ph-chart-line-up text-xl"></i> Analytics
+        </a>
+        <a href="#" class="flex items-center gap-3 text-gray-400 p-3 hover:text-white hover:bg-white/10 rounded-xl transition">
+            <i class="ph ph-gear text-xl"></i> Settings
+        </a>
+    </div>
+    <a href="{% url 'logout' %}" class="flex items-center gap-3 text-red-400 p-3 hover:bg-red-500/10 rounded-xl mt-10">
+        <i class="ph ph-sign-out text-xl"></i> Logout
+    </a>
+</nav>
+
+<aside class="hidden md:flex w-64 glass-sidebar h-full flex-col p-6 rounded-r-3xl relative z-10">
+    <div class="flex items-center gap-4 mb-10">
+        <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-pink-500 to-violet-500 p-0.5">
+            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ request.user.username|default:'guest' }}" class="rounded-full bg-gray-900" alt="avatar">
+        </div>
+        <div>
+            <h3 class="font-bold text-lg">{{ request.user.username|default:'Guest' }}</h3>
+            <p class="text-xs text-gray-400">Admin</p>
+        </div>
+    </div>
+    <nav class="flex-1 space-y-4">
+        <a href="{% url 'dashboard' %}" class="flex items-center gap-3 p-3 rounded-xl font-semibold transition {% if active_segment == 'Dashboard' %}bg-white text-gray-900 shadow-lg shadow-purple-500/20{% else %}text-gray-400 hover:text-white hover:bg-white/10{% endif %}">
+            <i class="ph ph-squares-four text-xl"></i> Dashboard
+        </a>
+        <a href="{% url 'cameras' %}" class="flex items-center gap-3 p-3 rounded-xl font-semibold transition {% if active_segment == 'Cameras' %}bg-white text-gray-900 shadow-lg shadow-purple-500/20{% else %}text-gray-400 hover:text-white hover:bg-white/10{% endif %}">
+            <i class="ph ph-video-camera text-xl"></i> Cameras
+        </a>
+        <a href="#" class="flex items-center gap-3 text-gray-400 p-3 hover:text-white hover:bg-white/10 rounded-xl transition">
+            <i class="ph ph-chart-line-up text-xl"></i> Analytics
+        </a>
+        <a href="#" class="flex items-center gap-3 text-gray-400 p-3 hover:text-white hover:bg-white/10 rounded-xl transition">
+            <i class="ph ph-gear text-xl"></i> Settings
+        </a>
+    </nav>
+    <a href="{% url 'logout' %}" class="flex items-center gap-3 text-red-400 p-3 hover:bg-red-500/10 rounded-xl mt-auto">
+        <i class="ph ph-sign-out text-xl"></i> Logout
+    </a>
+</aside>

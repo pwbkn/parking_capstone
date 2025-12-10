@@ -1,52 +1,13 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<!-- Sidebar -->
-<aside class="w-64 glass-sidebar h-full flex flex-col p-6 hidden md:flex rounded-r-3xl relative z-10">
-    <!-- User Profile -->
-    <div class="flex items-center gap-4 mb-10">
-        <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-pink-500 to-violet-500 p-0.5">
-            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ request.user.username|default:'guest' }}" class="rounded-full bg-gray-900" alt="avatar">
-        </div>
-        <div>
-            <h3 class="font-bold text-lg">{{ request.user.username|default:'Guest' }}</h3>
-            <p class="text-xs text-gray-400">Admin</p>
-        </div>
-    </div>
-
-    <!-- Navigation -->
-    <nav class="flex-1 space-y-4">
-        <a href="{% url 'dashboard' %}"
-           class="flex items-center gap-3 p-3 rounded-xl font-semibold transition shadow-lg shadow-purple-500/20 {% if active_segment == 'Dashboard' %}bg-white text-gray-900{% else %}text-gray-400 hover:text-white hover:bg-white/10{% endif %}">
-            <i class="ph ph-squares-four text-xl"></i> Dashboard
-        </a>
-        <a href="{% url 'cameras' %}"
-           class="flex items-center gap-3 p-3 rounded-xl font-semibold transition {% if active_segment == 'Cameras' %}bg-white text-gray-900 shadow-lg shadow-purple-500/20{% else %}text-gray-400 hover:text-white hover:bg-white/10{% endif %}">
-            <i class="ph ph-video-camera text-xl"></i> Cameras
-        </a>
-        <a href="#" class="flex items-center gap-3 text-gray-400 p-3 hover:text-white hover:bg-white/10 rounded-xl transition">
-            <i class="ph ph-chart-line-up text-xl"></i> Analytics
-        </a>
-        <a href="#" class="flex items-center gap-3 text-gray-400 p-3 hover:text-white hover:bg-white/10 rounded-xl transition">
-            <i class="ph ph-gear text-xl"></i> Settings
-        </a>
-    </nav>
-
-    <!-- Logout -->
-    <a href="{% url 'logout' %}" class="flex items-center gap-3 text-red-400 p-3 hover:bg-red-500/10 rounded-xl mt-auto">
-        <i class="ph ph-sign-out text-xl"></i> Logout
-    </a>
-</aside>
-
-<!-- Main Content -->
-<main class="flex-1 p-8 overflow-y-auto relative">
-    <!-- Header -->
-    <header class="flex justify-between items-center mb-8">
-        <div class="relative w-96">
+<main class="p-4 md:p-8 overflow-y-auto relative space-y-6">
+    <header class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div class="relative w-full md:w-96">
             <i class="ph ph-magnifying-glass absolute left-3 top-3 text-gray-500"></i>
             <input type="text" placeholder="Search sensors..." class="w-full bg-gray-800 rounded-full py-2.5 pl-10 pr-4 focus:outline-none focus:ring-1 focus:ring-purple-500">
         </div>
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-4 md:justify-end">
             <button class="p-2 bg-gray-800 rounded-full hover:bg-gray-700 relative">
                 <i class="ph ph-bell"></i>
                 <span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
@@ -55,10 +16,7 @@
         </div>
     </header>
 
-    <!-- Dashboard Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        <!-- Parking Space Visual (Center Stage) -->
         <div class="lg:col-span-2 neo-card p-6 relative overflow-hidden group">
             <div class="flex justify-between items-start mb-4">
                 <div>
@@ -68,8 +26,6 @@
                 </div>
                 <span class="px-3 py-1 bg-purple-600/30 text-purple-300 text-xs rounded-full border border-purple-500/50">Zone A</span>
             </div>
-            
-            <!-- Isometric Illustration CSS Placeholder -->
             <div class="h-64 w-full flex items-center justify-center relative">
                 <!-- Simple CSS representation of the parking lot -->
                 <div class="transform rotate-x-60 rotate-z-45 perspective-1000">

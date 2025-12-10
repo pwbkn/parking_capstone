@@ -40,7 +40,42 @@
         }
     </style>
 </head>
-<body class="font-sans antialiased h-screen flex overflow-hidden">
-    {% block content %}{% endblock %}
+<body class="font-sans antialiased h-screen overflow-hidden bg-dark text-white">
+    <div class="flex h-full relative">
+        {% include 'partials/navbar.html' %}
+        <div class="flex-1 overflow-y-auto pt-16 md:pt-0">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <script>
+        // Simple mobile drawer toggle; avoids dependencies.
+        const toggleBtn = document.getElementById('mobile-nav-toggle');
+        const drawer = document.getElementById('mobile-nav-drawer');
+        const scrim = document.getElementById('mobile-nav-scrim');
+
+        function closeDrawer() {
+            if (drawer) drawer.classList.add('-translate-x-full');
+            if (scrim) scrim.classList.add('hidden');
+        }
+
+        function openDrawer() {
+            if (drawer) drawer.classList.remove('-translate-x-full');
+            if (scrim) scrim.classList.remove('hidden');
+        }
+
+        if (toggleBtn && drawer && scrim) {
+            toggleBtn.addEventListener('click', () => {
+                const isOpen = !drawer.classList.contains('-translate-x-full');
+                if (isOpen) {
+                    closeDrawer();
+                } else {
+                    openDrawer();
+                }
+            });
+
+            scrim.addEventListener('click', closeDrawer);
+        }
+    </script>
 </body>
 </html>
