@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<main class="p-4 md:p-8 overflow-y-auto space-y-6">
+    <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <p class="text-sm text-gray-400">Analytics</p>
+            <h1 class="text-3xl font-bold">History & Utilization</h1>
+            <p class="text-xs text-gray-500 mt-1">Complete scan history from SQLite with occupancy trends.</p>
+        </div>
+        <div class="flex items-center gap-3 text-sm text-gray-400">
+            <i class="ph ph-clock text-lg"></i>
+            {% if last_scan %}
+                <span>Last scan {{ last_scan.timestamp|date:'M d, Y H:i' }}</span>
+            {% else %}
+                <span>No scans logged yet</span>
+            {% endif %}
+        </div>
+    </header>
+
+    <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="neo-card p-5">
+            <p class="text-xs text-gray-400">Total Scans</p>
+            <p class="text-3xl font-bold">{{ total_scans }}</p>
+            <p class="text-xs text-gray-500 mt-1">All recorded in SQLite</p>
+        </div>
+        <div class="neo-card p-5">
+            <p class="text-xs text-gray-400">Avg Occupancy</p>
+            <p class="text-3xl font-bold">{{ avg_occupancy }}%</p>
+            <p class="text-xs text-gray-500 mt-1">Across all scans</p>
+        </div>
+        <div class="neo-card p-5">
+            <p class="text-xs text-gray-400">Peak Occupied</p>
+            <p class="text-3xl font-bold">{{ peak_occupied }}</p>
+            <p class="text-xs text-gray-500 mt-1">Most vehicles detected</p>
+        </div>
+        <div class="neo-card p-5">
+            <p class="text-xs text-gray-400">Latest Source</p>
+            <p class="text-3xl font-bold">{{ last_scan.source|default:'—' }}</p>
+            <p class="text-xs text-gray-500 mt-1">capture / upload / other</p>
+        </div>
+    </section>
+
+    <section class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div class="neo-card p-6 xl:col-span-2">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <p class="text-sm text-gray-400">Trend</p>
+                    <h2 class="text-xl font-semibold">Occupied vs Total Spaces</h2>
+                </div>
+                <div class="flex gap-2 text-xs text-gray-400">
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-purple-400"></span>Occupied</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-teal-400"></span>Total</span>
+                </div>
+            </div>
+            <div class="h-80">
+                <canvas id="historyChart"></canvas>
+            </div>
+        </div>
+
+        <div class="neo-card p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <p class="text-sm text-gray-400">Occupancy Rate</p>
+                    <h2 class="text-xl font-semibold">Current Snapshot</h2>
+                </div>
+            </div>
+            <div class="space-y-3">
+                {% if last_scan %}
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-400">Occupancy</span>
+                        <span class="font-semibold">{{ last_scan.occupancy_rate }}%</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-400">Occupied / Total</span>
+                        <span class="font-semibold">{{ last_scan.occupied_spaces }} / {{ last_scan.total_spaces }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-400">Free Spots</span>
+                        <span class="font-semibold">{{ last_scan.free_spaces }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-400">Accuracy Score</span>
+                        <span class="font-semibold">{{ last_scan.accuracy_score|floatformat:2 }}</span>
+                    </div>
+                {% else %}
+                    <p class="text-sm text-gray-400">No scans available yet. Run a camera scan to populate history.</p>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <section class="neo-card p-6">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <p class="text-sm text-gray-400">History</p>
+                <h2 class="text-xl font-semibold">Complete Scan Log</h2>
+            </div>
+            <span class="text-xs text-gray-500">Newest first</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="text-gray-400 uppercase text-xs">
+                    <tr class="border-b border-white/5">
+                        <th class="py-2 text-left font-medium">Timestamp</th>
+                        <th class="py-2 text-left font-medium">Source</th>
+                        <th class="py-2 text-left font-medium">Occupied</th>
+                        <th class="py-2 text-left font-medium">Free</th>
+                        <th class="py-2 text-left font-medium">Total</th>
+                        <th class="py-2 text-left font-medium">Occupancy %</th>
+                        <th class="py-2 text-left font-medium">Accuracy</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                    {% for row in history %}
+                        <tr class="hover:bg-white/5">
+                            <td class="py-3">{{ row.timestamp|date:'M d, Y H:i' }}</td>
+                            <td class="py-3 capitalize">{{ row.source }}</td>
+                            <td class="py-3">{{ row.occupied_spaces }}</td>
+                            <td class="py-3">{{ row.free_spaces }}</td>
+                            <td class="py-3">{{ row.total_spaces }}</td>
+                            <td class="py-3">{{ row.occupancy_rate }}%</td>
+                            <td class="py-3">{{ row.accuracy_score|floatformat:2 }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="7" class="py-4 text-center text-gray-400">No scan history yet.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+
+{{ chart_json|json_script:"chart-data" }}
+<script>
+    const chartNode = document.getElementById('chart-data');
+    const chartData = chartNode ? JSON.parse(chartNode.textContent) : { labels: [], occupied: [], total: [] };
+
+    const ctx = document.getElementById('historyChart');
+    if (ctx) {
+        const gradientOccupied = ctx.getContext('2d').createLinearGradient(0, 0, 0, 300);
+        gradientOccupied.addColorStop(0, 'rgba(168, 85, 247, 0.35)');
+        gradientOccupied.addColorStop(1, 'rgba(168, 85, 247, 0)');
+
+        const gradientTotal = ctx.getContext('2d').createLinearGradient(0, 0, 0, 300);
+        gradientTotal.addColorStop(0, 'rgba(45, 212, 191, 0.35)');
+        gradientTotal.addColorStop(1, 'rgba(45, 212, 191, 0)');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartData.labels,
+                datasets: [
+                    {
+                        label: 'Occupied',
+                        data: chartData.occupied,
+                        borderColor: '#a855f7',
+                        backgroundColor: gradientOccupied,
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.35,
+                        pointRadius: 0
+                    },
+                    {
+                        label: 'Total Spaces',
+                        data: chartData.total,
+                        borderColor: '#2dd4bf',
+                        backgroundColor: gradientTotal,
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.35,
+                        pointRadius: 0
+                    }
+                ]
+            },
+            options: {
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: '#9ca3af', maxRotation: 0 },
+                        grid: { display: false }
+                    },
+                    y: {
+                        ticks: { color: '#9ca3af' },
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        beginAtZero: true
+                    }
+                },
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
+</script>
+{% endblock %}

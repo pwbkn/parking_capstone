@@ -1,0 +1,224 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<main class="p-4 md:p-8 overflow-y-auto space-y-6">
+    <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <p class="text-sm text-gray-400">Model Training Results</p>
+            <h1 class="text-3xl font-bold">AIPS · YOLO Training Metrics</h1>
+            <p class="text-xs text-gray-500 mt-1">Pulled from {{ csv_path }} (complete CSV).</p>
+        </div>
+        {% if csv_missing %}
+            <div class="px-4 py-2 rounded-xl bg-red-500/20 text-red-200 text-sm border border-red-500/40">
+                results.csv not found at {{ csv_path }}.
+            </div>
+        {% else %}
+            <div class="px-4 py-2 rounded-xl bg-purple-500/10 text-purple-200 text-sm border border-purple-500/30">
+                {{ summary.epochs }} epochs logged
+            </div>
+        {% endif %}
+    </header>
+
+    <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="neo-card p-5">
+            <p class="text-xs text-gray-400">Best mAP50-95</p>
+            <p class="text-3xl font-bold">{{ summary.best_map5095|default:"—" }}</p>
+            <p class="text-xs text-gray-500 mt-1">Peak across all epochs</p>
+        </div>
+        <div class="neo-card p-5">
+            <p class="text-xs text-gray-400">Best mAP50</p>
+            <p class="text-3xl font-bold">{{ summary.best_map50|default:"—" }}</p>
+            <p class="text-xs text-gray-500 mt-1">Overall best run</p>
+        </div>
+        <div class="neo-card p-5">
+            <p class="text-xs text-gray-400">Last Precision / Recall</p>
+            <p class="text-3xl font-bold">{{ summary.last_precision|default:"—" }} / {{ summary.last_recall|default:"—" }}</p>
+            <p class="text-xs text-gray-500 mt-1">Epoch {{ summary.last_epoch|default:"—" }}</p>
+        </div>
+        <div class="neo-card p-5">
+            <p class="text-xs text-gray-400">Total Train Time</p>
+            <p class="text-3xl font-bold">{{ summary.total_time|floatformat:1 }} s</p>
+            <p class="text-xs text-gray-500 mt-1">Summed across epochs</p>
+        </div>
+    </section>
+
+    <!-- <section class="neo-card p-6">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <p class="text-sm text-gray-400">Performance Over Epochs</p>
+                <h2 class="text-xl font-semibold">mAP curves</h2>
+            </div>
+            <div class="text-xs text-gray-500">mAP50 & mAP50-95</div>
+        </div>
+        <div class="h-80 relative">
+            <canvas id="trainingChart"></canvas>
+            <div id="chart-empty" class="absolute inset-0 flex items-center justify-center text-gray-500 text-sm hidden">No chart data available.</div>
+        </div>
+    </section> -->
+
+    {% if images %}
+    <section class="neo-card p-6 space-y-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-sm text-gray-400">Artifacts</p>
+                <h2 class="text-xl font-semibold">Training visualizations</h2>
+            </div>
+            <span class="text-xs text-gray-500">Rendered from results_training/</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {% for img in images %}
+                <figure class="bg-gray-900/40 rounded-xl border border-white/5 overflow-hidden shadow-lg">
+                    <button class="w-full" data-zoom-src="{{ img.src }}" data-zoom-title="{{ img.title }}">
+                        <img src="{{ img.src }}" alt="{{ img.title }}" class="w-full h-52 object-contain bg-black">
+                    </button>
+                    <figcaption class="p-3 text-sm text-gray-200 flex items-center justify-between">
+                        <span>{{ img.title }}</span>
+                        <span class="text-xs text-gray-500">{{ img.name }}</span>
+                    </figcaption>
+                </figure>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="neo-card p-6">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <p class="text-sm text-gray-400">Complete CSV</p>
+                <h2 class="text-xl font-semibold">All epochs</h2>
+            </div>
+            <span class="text-xs text-gray-500">Newest last</span>
+        </div>
+        {% if csv_missing %}
+            <p class="text-sm text-gray-400">results.csv is missing. Place the file under results_training/results.csv.</p>
+        {% else %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-xs">
+                    <thead class="text-gray-400 uppercase text-[10px]">
+                        <tr class="border-b border-white/5">
+                            {% for h in headers %}
+                                <th class="py-2 px-2 text-left font-medium">{{ h }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5">
+                        {% for row in table_rows %}
+                            <tr class="hover:bg-white/5">
+                                {% for val in row %}
+                                    <td class="py-2 px-2">{{ val }}</td>
+                                {% endfor %}
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="{{ headers|length }}" class="py-3 text-center text-gray-400">No rows found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </section>
+</main>
+
+{{ chart_json|json_script:"training-chart-data" }}
+<script>
+    const chartNode = document.getElementById('training-chart-data');
+    const chartData = chartNode ? JSON.parse(chartNode.textContent) : { labels: [], map50: [], map5095: [] };
+    const canvas = document.getElementById('trainingChart');
+    const emptyState = document.getElementById('chart-empty');
+
+    const labels = Array.isArray(chartData.labels) ? chartData.labels.map(String) : [];
+    const map50 = Array.isArray(chartData.map50) ? chartData.map50.map(Number).filter(Number.isFinite) : [];
+    const map5095 = Array.isArray(chartData.map5095) ? chartData.map5095.map(Number).filter(Number.isFinite) : [];
+
+    if (canvas && labels.length && map50.length && map5095.length) {
+        const ctx = canvas.getContext('2d');
+        const grad50 = ctx.createLinearGradient(0, 0, 0, 300);
+        grad50.addColorStop(0, 'rgba(168, 85, 247, 0.35)');
+        grad50.addColorStop(1, 'rgba(168, 85, 247, 0)');
+
+        const grad5095 = ctx.createLinearGradient(0, 0, 0, 300);
+        grad5095.addColorStop(0, 'rgba(34, 211, 238, 0.35)');
+        grad5095.addColorStop(1, 'rgba(34, 211, 238, 0)');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'mAP50',
+                        data: map50,
+                        borderColor: '#a855f7',
+                        backgroundColor: grad50,
+                        borderWidth: 2,
+                        tension: 0.35,
+                        fill: true,
+                        pointRadius: 0
+                    },
+                    {
+                        label: 'mAP50-95',
+                        data: map5095,
+                        borderColor: '#22d3ee',
+                        backgroundColor: grad5095,
+                        borderWidth: 2,
+                        tension: 0.35,
+                        fill: true,
+                        pointRadius: 0
+                    }
+                ]
+            },
+            options: {
+                plugins: {
+                    legend: { display: true, labels: { color: '#e5e7eb' } },
+                    tooltip: { mode: 'index', intersect: false }
+                },
+                scales: {
+                    x: { ticks: { color: '#9ca3af' }, grid: { display: false } },
+                    y: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+                },
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    } else if (emptyState) {
+        emptyState.classList.remove('hidden');
+    }
+
+    // Simple image zoom modal
+    const zoomButtons = document.querySelectorAll('[data-zoom-src]');
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-150';
+    modal.innerHTML = `
+        <div class="relative max-w-5xl w-full">
+            <button id="zoom-close" class="absolute -top-3 -right-3 bg-white text-black rounded-full w-8 h-8 font-bold">×</button>
+            <img id="zoom-img" src="" alt="Zoomed image" class="w-full h-auto rounded-lg border border-white/10 shadow-2xl">
+            <div id="zoom-title" class="mt-2 text-sm text-gray-200"></div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    const zoomImg = modal.querySelector('#zoom-img');
+    const zoomTitle = modal.querySelector('#zoom-title');
+    const closeBtn = modal.querySelector('#zoom-close');
+
+    function openModal(src, title) {
+        zoomImg.src = src;
+        zoomTitle.textContent = title || '';
+        modal.classList.remove('pointer-events-none');
+        modal.classList.remove('opacity-0');
+    }
+
+    function closeModal() {
+        modal.classList.add('pointer-events-none');
+        modal.classList.add('opacity-0');
+    }
+
+    zoomButtons.forEach(btn => {
+        btn.addEventListener('click', () => openModal(btn.dataset.zoomSrc, btn.dataset.zoomTitle));
+    });
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+</script>
+{% endblock %}

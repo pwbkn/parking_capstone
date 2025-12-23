@@ -23,3 +23,13 @@ class AnalyticsData(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     occupancy_rate = models.IntegerField() # 0-100
     accuracy_score = models.FloatField(default=0.0)
+    total_spaces = models.IntegerField(default=0)
+    occupied_spaces = models.IntegerField(default=0)
+    free_spaces = models.IntegerField(default=0)
+    source = models.CharField(max_length=20, default="unknown")
+
+    class Meta:
+        ordering = ["-timestamp"]
+
+    def __str__(self):
+        return f"{self.timestamp.isoformat()} ({self.occupancy_rate}%)"
